@@ -5,6 +5,7 @@ var mongoose = require('mongoose')
 mongoose.Promise = global.Promise;
 var Task = require('./Task')
 var cors = require('cors');
+var path = require('path')
 
 require("dotenv").config({silent: true});
 var DATABASE_URI = process.env.DATABASE_URI
@@ -13,6 +14,8 @@ var jsonParser = bodyParser.json()
 
 var app = express()
 app.use(cors());
+
+app.use(express.static('dist'));
 
 //create new task
 app.post("/task", jsonParser, function(req, res) {
@@ -102,7 +105,7 @@ app.delete("/task/:taskID", function(req, res) {
   })
 })
 
-app.get('*', function(req, res) {
+app.get("*", function(req, res) {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
