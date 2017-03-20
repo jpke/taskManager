@@ -102,6 +102,9 @@ app.delete("/task/:taskID", function(req, res) {
   })
 })
 
+router.get('*', function(req, res) {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
 
 
 mongoose.Promise = global.Promise;
