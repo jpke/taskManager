@@ -26,13 +26,11 @@ app.use(express.static('dist'));
 //create passport strategy to check for valid json web tokens.
 passport.use(new Strategy(
   function(token, done) {
-    console.log("token: ", token);
     if(token) {
       jwt.verify(token, TOKENSECRET, function(err, decoded) {
         if(err) {
           return done(err)
         }
-        console.log("token decoded: ", decoded);
         return done(null, decoded, {scope: 'all'})
       })
     } else {
@@ -160,10 +158,10 @@ app.post("/task", passport.authenticate('bearer', {session: false}), jsonParser,
 });
 
 //get all tasks
-app.get("/task/:createdOrEnd/:date", function(req, res) {
-  console.log("params: ", req.params)
+app.get("/task/:createdOrEnd/:date", passport.authenticate('bearer', {session: false}), function(req, res) {
+  // console.log("params: ", req.params, "user :", req.user)
   if(req.params.createdOrEnd === "all") {
-    Task.find({}).exec()
+    Task.find({createdBy: req.user._id}).exec()
     .then(function(tasks) {
       return res.status(200).json(tasks);
     })
@@ -173,7 +171,10 @@ app.get("/task/:createdOrEnd/:date", function(req, res) {
     });
   }
   else if(req.params.createdOrEnd === "created") {
-    Task.find({created: {$gt: req.params.date}}).exec()
+    Task.find({
+      createdBy: req.user._id,
+      created: {$gt: +req.params.date}
+    }).exec()
     .then(function(tasks) {
       return res.status(200).json(tasks);
     })
@@ -183,7 +184,10 @@ app.get("/task/:createdOrEnd/:date", function(req, res) {
     });
   }
   else if(req.params.createdOrEnd === "end"){
-    Task.find({end: {$lt: req.params.date}}).exec()
+    Task.find({
+      createdBy: req.user._id,
+      end: {$lt: +req.params.date}
+    }).exec()
     .then(function(tasks) {
       return res.status(200).json(tasks);
     })
