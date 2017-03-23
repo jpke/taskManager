@@ -1,14 +1,20 @@
 var express = require('express')
 var bodyParser = require('body-parser')
 var mongoose = require('mongoose')
+var passport = require('passport')
+var Strategy = require('passport-http-bearer').Strategy
+var jwt = require('jsonwebtoken')
+var bcrypt = require('bcryptjs')
 //use global promise library
 mongoose.Promise = global.Promise;
 var Task = require('./Task')
+var User = require('./User')
 var cors = require('cors');
 var path = require('path')
 
 require("dotenv").config({silent: true});
-var DATABASE_URI = process.env.DATABASE_URI
+var DATABASE_URI = process.env.DATABASE_URI;
+var TOKENSECRET = process.env.SECRET;
 
 var jsonParser = bodyParser.json()
 
@@ -17,26 +23,145 @@ app.use(cors());
 
 app.use(express.static('dist'));
 
-//create new task
-app.post("/task", jsonParser, function(req, res) {
-  var newTask = new Task();
-  newTask.name = req.body.name;
-  newTask.end = req.body.end;
-  newTask.description = req.body.description;
-  newTask.created = Date.now();
-  newTask.createdBy = req.body.createdBy;
-  newTask.save()
-  .then(function(newTaskCreated) {
-    return res.status(201).json(newTaskCreated);
+//create passport strategy to check for valid json web tokens.
+passport.use(new Strategy(
+  function(token, done) {
+    console.log("token: ", token);
+    if(token) {
+      jwt.verify(token, TOKENSECRET, function(err, decoded) {
+        if(err) {
+          return done(err)
+        }
+        console.log("token decoded: ", decoded);
+        return done(null, decoded, {scope: 'all'})
+      })
+    } else {
+      return done(null, false)
+    }
+  }
+))
+app.use(passport.initialize())
+
+//register new user
+//requires name, email and password in request body
+//returns status 201 with mongo id, name, courses (enrolled in) and json web token valide for 24 hours
+//returns status 400 for email already in use, status 500 for server or database error
+app.post('/users', jsonParser, function(req,res) {
+  var name = req.body.name
+  var email = req.body.email
+  var password = req.body.password
+  User.findOne({email: email}).exec()
+  .then(function(user) {
+    if(user != null) {
+      throw "emailInUse";
+    }
+    return bcrypt.genSalt(10, function(err, salt) {
+      if(err) {
+        throw err;
+      }
+      return bcrypt.hash(password, salt, function(err, hash) {
+        if(err) {
+          throw err;
+        }
+        var user = new User()
+        user.name = name;
+        user.email = email;
+        user.password = hash;
+        console.log("new user: ", user);
+        user.save()
+        .then(function(user) {
+          console.log("saved user: ", user);
+          var token = jwt.sign({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+          }, TOKENSECRET, {
+            expiresIn: "24h"
+          });
+          return res.status(201).json({
+            _id: user._id,
+            name: user.name,
+            token: token
+          });
+        })
+      });
+    });
   })
   .catch(function(err) {
     console.log("error: ", err);
-    return res.status(500).json('Internal Server Error');
+    if(err === "emailInUse") {
+      return res.status(400).json({message: "email already associated with an account"});
+    }
+    return res.status(500).json({message: 'Internal server error'});
+  })
+})
+
+//logs in user, generates json web token valid for 24 hours
+//requires user email and password in request body
+//returns status 200 with user mongo id, name, email, enrolled courses, ids of passed quizzes and json web token
+//returns status 400 for invalide password or token
+app.post('/login', jsonParser, function(req, res) {
+  var password = req.body.password
+  User.findOne({email: req.body.email}).exec()
+  .then(function(user) {
+    if(!user) return res.status(400)
+    user.validatePassword(password, function(err, isValid) {
+      if(err) {
+        return res.status(400).json({message: 'Invalid token'})
+      }
+      if(!isValid) {
+        return res.status(400).json({message: 'Incorrect password'})
+      }
+      var token = jwt.sign({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+      }, TOKENSECRET, {
+        expiresIn: "24h"
+      })
+      user = user.toObject();
+      return res.status(200).json({
+        _id: user._id,
+        name: user.name,
+        token: token
+      });
+    })
+  })
+  .catch(function(err) {
+    console.log("error: ", err);
+    return res.status(500).json({message: 'Internal server error'})
   });
+})
+
+//create new task
+app.post("/task", passport.authenticate('bearer', {session: false}), jsonParser, function(req, res) {
+  if(!req.body.name ||
+     !req.body.end ||
+     !req.body.description ||
+     !req.body.createdBy) {
+       return res.status(400).json('Bad Request');
+   }
+  else {
+    var newTask = new Task();
+    newTask.name = req.body.name;
+    newTask.end = req.body.end;
+    newTask.description = req.body.description;
+    newTask.created = Date.now();
+    newTask.createdBy = req.body.createdBy;
+    newTask.save()
+    .then(function(newTaskCreated) {
+      return res.status(201).json(newTaskCreated);
+    })
+    .catch(function(err) {
+      console.log("error: ", err);
+      return res.status(500).json('Internal Server Error');
+    });
+  }
 });
 
 //get all tasks
 app.get("/task/:createdOrEnd/:date", function(req, res) {
+  console.log("params: ", req.params)
   if(req.params.createdOrEnd === "all") {
     Task.find({}).exec()
     .then(function(tasks) {

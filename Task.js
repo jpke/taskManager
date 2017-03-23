@@ -1,25 +1,26 @@
-var mongoose = require('mongoose')
+var mongoose = require('mongoose'), Schema = mongoose.Schema;
 
-var taskSchema = new mongoose.Schema({
+var taskSchema = new Schema({
   name: {
     type: String,
     required: true
   },
   end: {
-    type: Date,
-    default: Date.now() + (1000*60*60*24)
+    type: Number,
+    required: true
   },
   description: {
     type: String,
     required: true
   },
   created: {
-    type: Date,
+    type: Number,
     required: true
   },
   createdBy: {
-    type: String,
-    required: true
+    type: Schema.Types.ObjectId,
+    // type: String,
+    ref: 'Course'
   }
 })
 
