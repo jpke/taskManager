@@ -5,6 +5,7 @@ var passport = require('passport')
 var Strategy = require('passport-http-bearer').Strategy
 var jwt = require('jsonwebtoken')
 var bcrypt = require('bcryptjs')
+var formidable = require('formidable')
 //use global promise library
 mongoose.Promise = global.Promise;
 var Task = require('./Task')
@@ -131,6 +132,24 @@ app.post('/login', jsonParser, function(req, res) {
   });
 })
 
+app.post('/profileImage',
+  passport.authenticate('bearer', {session:false}),
+  function(req, res) {
+    var form = new formidable.IncomingForm();
+    form.multiples = true;
+    form.uploadDir = path.join(__dirname);
+    form.parse(req, function(err, fields, files) {
+      console.log("parsed files: ", files);
+      console.log("parsed files: ", files.file.path);
+      var stream = fs.createReadStream(files.file.path);
+      res.status(200).json(files);
+      fs.unlink(files.file.path, function(err) {
+        if(err) console.log("file delete error: ", err);
+      })
+    });
+  }
+)
+
 //create new task
 app.post("/task", passport.authenticate('bearer', {session: false}), jsonParser, function(req, res) {
   if(!req.body.name ||
@@ -158,46 +177,87 @@ app.post("/task", passport.authenticate('bearer', {session: false}), jsonParser,
 });
 
 //get all tasks
-app.get("/task/:createdOrEnd/:date", passport.authenticate('bearer', {session: false}), function(req, res) {
+app.get("/task/:createdOrEnd/:date/:whose", passport.authenticate('bearer', {session: false}), function(req, res) {
   // console.log("params: ", req.params, "user :", req.user)
-  if(req.params.createdOrEnd === "all") {
-    Task.find({createdBy: req.user._id}).exec()
-    .then(function(tasks) {
-      return res.status(200).json(tasks);
-    })
-    .catch(function(err) {
-      console.log("error: ", err);
-      return res.status(500).json('Internal Server Error');
-    });
-  }
-  else if(req.params.createdOrEnd === "created") {
-    Task.find({
-      createdBy: req.user._id,
-      created: {$gt: +req.params.date}
-    }).exec()
-    .then(function(tasks) {
-      return res.status(200).json(tasks);
-    })
-    .catch(function(err) {
-      console.log("error: ", err);
-      return res.status(500).json('Internal Server Error');
-    });
-  }
-  else if(req.params.createdOrEnd === "end"){
-    Task.find({
-      createdBy: req.user._id,
-      end: {$lt: +req.params.date}
-    }).exec()
-    .then(function(tasks) {
-      return res.status(200).json(tasks);
-    })
-    .catch(function(err) {
-      console.log("error: ", err);
-      return res.status(500).json('Internal Server Error');
-    });
-  }
-  else {
-    return res.status(400).json('Invalid created or end specification');
+  if(req.params.whose === 'mine') {
+    if(req.params.createdOrEnd === "all") {
+      Task.find({createdBy: req.user._id}).exec()
+      .then(function(tasks) {
+        return res.status(200).json(tasks);
+      })
+      .catch(function(err) {
+        console.log("error: ", err);
+        return res.status(500).json('Internal Server Error');
+      });
+    }
+    else if(req.params.createdOrEnd === "created") {
+      Task.find({
+        createdBy: req.user._id,
+        created: {$gt: +req.params.date}
+      }).exec()
+      .then(function(tasks) {
+        return res.status(200).json(tasks);
+      })
+      .catch(function(err) {
+        console.log("error: ", err);
+        return res.status(500).json('Internal Server Error');
+      });
+    }
+    else if(req.params.createdOrEnd === "end"){
+      Task.find({
+        createdBy: req.user._id,
+        end: {$lt: +req.params.date}
+      }).exec()
+      .then(function(tasks) {
+        return res.status(200).json(tasks);
+      })
+      .catch(function(err) {
+        console.log("error: ", err);
+        return res.status(500).json('Internal Server Error');
+      });
+    }
+    else {
+      return res.status(400).json('Invalid created or end specification');
+    }
+  } else {
+    //return everyone's tasks
+    if(req.params.createdOrEnd === "all") {
+      Task.find({}).exec()
+      .then(function(tasks) {
+        return res.status(200).json(tasks);
+      })
+      .catch(function(err) {
+        console.log("error: ", err);
+        return res.status(500).json('Internal Server Error');
+      });
+    }
+    else if(req.params.createdOrEnd === "created") {
+      Task.find({
+        created: {$gt: +req.params.date}
+      }).exec()
+      .then(function(tasks) {
+        return res.status(200).json(tasks);
+      })
+      .catch(function(err) {
+        console.log("error: ", err);
+        return res.status(500).json('Internal Server Error');
+      });
+    }
+    else if(req.params.createdOrEnd === "end"){
+      Task.find({
+        end: {$lt: +req.params.date}
+      }).exec()
+      .then(function(tasks) {
+        return res.status(200).json(tasks);
+      })
+      .catch(function(err) {
+        console.log("error: ", err);
+        return res.status(500).json('Internal Server Error');
+      });
+    }
+    else {
+      return res.status(400).json('Invalid created or end specification');
+    }
   }
 });
 
