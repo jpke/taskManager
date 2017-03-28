@@ -6,6 +6,8 @@ var Strategy = require('passport-http-bearer').Strategy
 var jwt = require('jsonwebtoken')
 var bcrypt = require('bcryptjs')
 var formidable = require('formidable')
+var path = require('path')
+var fs = require('fs')
 //use global promise library
 mongoose.Promise = global.Promise;
 var Task = require('./Task')
@@ -139,13 +141,8 @@ app.post('/profileImage',
     form.multiples = true;
     form.uploadDir = path.join(__dirname);
     form.parse(req, function(err, fields, files) {
-      console.log("parsed files: ", files);
       console.log("parsed files: ", files.file.path);
-      var stream = fs.createReadStream(files.file.path);
-      res.status(200).json(files);
-      fs.unlink(files.file.path, function(err) {
-        if(err) console.log("file delete error: ", err);
-      })
+      res.status(1).json(files.file.path);
     });
   }
 )
