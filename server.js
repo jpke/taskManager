@@ -142,10 +142,17 @@ app.post('/profileImage',
     form.uploadDir = path.join(__dirname);
     form.parse(req, function(err, fields, files) {
       console.log("parsed files: ", files.file.path);
-      res.status(1).json(files.file.path);
+      res.status(201).json(files.file.path);
     });
   }
 )
+
+app.get('/profileImage/:imageId',
+  function(req, res) {
+    console.log(req.params.imageId);
+    console.log(path.join(__dirname, req.params.imageId));
+    res.sendFile(path.join(__dirname, req.params.imageId));
+  })
 
 //create new task
 app.post("/task", passport.authenticate('bearer', {session: false}), jsonParser, function(req, res) {
