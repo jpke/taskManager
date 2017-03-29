@@ -14,9 +14,8 @@ var UserSchema = new Schema({
     type: String,
     required: true
   },
-  image: {
-    type: String,
-    data: Buffer
+  profilePicSet: {
+    type: Boolean
   }
 })
 

@@ -124,6 +124,7 @@ app.post('/login', jsonParser, function(req, res) {
       return res.status(200).json({
         _id: user._id,
         name: user.name,
+        profilePicSet: user.profilePicSet,
         token: token
       });
     })
@@ -137,21 +138,32 @@ app.post('/login', jsonParser, function(req, res) {
 app.post('/profileImage',
   passport.authenticate('bearer', {session:false}),
   function(req, res) {
+    console.log("req.user: ", req.user._id);
     var form = new formidable.IncomingForm();
     form.multiples = true;
-    form.uploadDir = path.join(__dirname);
+    form.uploadDir = path.join(__dirname, "/profilePics");
+    form.on('file', function(field, file) {
+    //rename the incoming file to the file's name
+      fs.rename(file.path, form.uploadDir + "/" + req.user._id);
+    });
     form.parse(req, function(err, fields, files) {
       console.log("parsed files: ", files.file.path);
-      res.status(201).json(files.file.path);
+      User.findOneAndUpdate({_id: req.user._id}, {profilePicSet: true}).exec()
+      .then(function(user) {
+        res.status(201).json("Image uploaded successfully");
+      })
+      .catch(function(err) {
+        res.status(500).json('Internal Server Error');
+      })
     });
   }
 )
 
 app.get('/profileImage/:imageId',
   function(req, res) {
-    console.log(req.params.imageId);
-    console.log(path.join(__dirname, req.params.imageId));
-    res.sendFile(path.join(__dirname, req.params.imageId));
+    console.log("image address: ", req.params.imageId);
+    console.log(path.join(__dirname, "/profilePics", req.params.imageId));
+    res.sendFile(path.join(__dirname, "/profilePics", req.params.imageId));
   })
 
 //create new task
