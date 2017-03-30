@@ -197,7 +197,12 @@ app.get("/task/:createdOrEnd/:date/:whose", passport.authenticate('bearer', {ses
   // console.log("params: ", req.params, "user :", req.user)
   if(req.params.whose === 'mine') {
     if(req.params.createdOrEnd === "all") {
-      Task.find({createdBy: req.user._id}).exec()
+      Task.find({createdBy: req.user._id})
+      .populate({
+        path: 'createdBy',
+        select: '_id name profilePicSet'
+      })
+      .exec()
       .then(function(tasks) {
         return res.status(200).json(tasks);
       })
@@ -210,7 +215,12 @@ app.get("/task/:createdOrEnd/:date/:whose", passport.authenticate('bearer', {ses
       Task.find({
         createdBy: req.user._id,
         created: {$gt: +req.params.date}
-      }).exec()
+      })
+      .populate({
+        path: 'createdBy',
+        select: '_id name profilePicSet'
+      })
+      .exec()
       .then(function(tasks) {
         return res.status(200).json(tasks);
       })
@@ -223,7 +233,12 @@ app.get("/task/:createdOrEnd/:date/:whose", passport.authenticate('bearer', {ses
       Task.find({
         createdBy: req.user._id,
         end: {$lt: +req.params.date}
-      }).exec()
+      })
+      .populate({
+        path: 'createdBy',
+        select: '_id name profilePicSet'
+      })
+      .exec()
       .then(function(tasks) {
         return res.status(200).json(tasks);
       })
@@ -238,7 +253,12 @@ app.get("/task/:createdOrEnd/:date/:whose", passport.authenticate('bearer', {ses
   } else {
     //return everyone's tasks
     if(req.params.createdOrEnd === "all") {
-      Task.find({}).exec()
+      Task.find({})
+      .populate({
+        path: 'createdBy',
+        select: '_id name profilePicSet'
+      })
+      .exec()
       .then(function(tasks) {
         return res.status(200).json(tasks);
       })
@@ -250,7 +270,12 @@ app.get("/task/:createdOrEnd/:date/:whose", passport.authenticate('bearer', {ses
     else if(req.params.createdOrEnd === "created") {
       Task.find({
         created: {$gt: +req.params.date}
-      }).exec()
+      })
+      .populate({
+        path: 'createdBy',
+        select: '_id name profilePicSet'
+      })
+      .exec()
       .then(function(tasks) {
         return res.status(200).json(tasks);
       })
@@ -262,7 +287,12 @@ app.get("/task/:createdOrEnd/:date/:whose", passport.authenticate('bearer', {ses
     else if(req.params.createdOrEnd === "end"){
       Task.find({
         end: {$lt: +req.params.date}
-      }).exec()
+      })
+      .populate({
+        path: 'createdBy',
+        select: '_id name profilePicSet'
+      })
+      .exec()
       .then(function(tasks) {
         return res.status(200).json(tasks);
       })

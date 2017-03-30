@@ -29,5 +29,5 @@ UserSchema.methods.validatePassword = function(password, callback) {
   })
 }
 
-var UserElearn = mongoose.model('UserElearn', UserSchema)
-module.exports = UserElearn
+var User = mongoose.model('UserElearn', UserSchema)
+module.exports = User
