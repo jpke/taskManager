@@ -97,6 +97,37 @@ app.post('/users', jsonParser, function(req,res) {
   })
 })
 
+app.get('/users',
+  passport.authenticate('bearer', {session: false}),
+  function(req, res) {
+    User.find({}).select('name profilePicSet').exec()
+    .then(function(users) {
+      return res.status(200).json(users);
+    })
+    .catch(function(err) {
+      console.log("error: ", err);
+      return res.status(500).json({message: 'Internal Server Error'});
+    })
+  })
+
+app.get('/users/:userID',
+  passport.authenticate('bearer', {session: false}),
+  function(req, res) {
+    Task.find({createdBy: req.params.userID})
+    .populate({
+      path: 'createdBy',
+      select: '_id name profilePicSet'
+    })
+    .exec()
+    .then(function(tasks) {
+      return res.status(200).json(tasks);
+    })
+    .catch(function(err) {
+      console.log("error: ", err);
+      return res.status(500).json({message: 'Internal Server Error'});
+    })
+  })
+
 //logs in user, generates json web token valid for 24 hours
 //requires user email and password in request body
 //returns status 200 with user mongo id, name, email, enrolled courses, ids of passed quizzes and json web token
@@ -147,7 +178,6 @@ app.post('/profileImage',
       fs.rename(file.path, form.uploadDir + "/" + req.user._id);
     });
     form.parse(req, function(err, fields, files) {
-      console.log("parsed files: ", files.file.path);
       User.findOneAndUpdate({_id: req.user._id}, {profilePicSet: true}).exec()
       .then(function(user) {
         res.status(201).json("Image uploaded successfully");
@@ -161,8 +191,6 @@ app.post('/profileImage',
 
 app.get('/profileImage/:imageId',
   function(req, res) {
-    console.log("image address: ", req.params.imageId);
-    console.log(path.join(__dirname, "/profilePics", req.params.imageId));
     res.sendFile(path.join(__dirname, "/profilePics", req.params.imageId));
   })
 
@@ -194,7 +222,6 @@ app.post("/task", passport.authenticate('bearer', {session: false}), jsonParser,
 
 //get all tasks
 app.get("/task/:createdOrEnd/:date/:whose", passport.authenticate('bearer', {session: false}), function(req, res) {
-  // console.log("params: ", req.params, "user :", req.user)
   if(req.params.whose === 'mine') {
     if(req.params.createdOrEnd === "all") {
       Task.find({createdBy: req.user._id})
