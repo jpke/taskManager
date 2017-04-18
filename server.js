@@ -211,7 +211,15 @@ app.post("/task", passport.authenticate('bearer', {session: false}), jsonParser,
     newTask.createdBy = req.body.createdBy;
     newTask.save()
     .then(function(newTaskCreated) {
-      return res.status(201).json(newTaskCreated);
+      Task.find({_id: newTaskCreated._id})
+      .populate({
+              path: 'createdBy',
+              select: '_id name profilePicSet'
+            })
+      .exec()
+      .then(function(newTaskReturned) {
+        return res.status(201).json(newTaskReturned);
+      })
     })
     .catch(function(err) {
       console.log("error: ", err);
@@ -347,7 +355,15 @@ app.put("/task", jsonParser, function(req, res) {
   {new: true})
   .exec()
   .then(function(updatedTask) {
-    return res.status(200).json(updatedTask);
+    Task.find({_id: updatedTask._id})
+    .populate({
+            path: 'createdBy',
+            select: '_id name profilePicSet'
+          })
+    .exec()
+    .then(function(updatedTaskReturned) {
+      return res.status(200).json(updatedTaskReturned);
+    })
   })
   .catch(function(err) {
     console.log("error: ", err);
